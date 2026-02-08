@@ -1,10 +1,17 @@
 """Cognee memory integration for fact storage and retrieval."""
 # pylint: disable=import-error
 
-from typing import Dict, List
+from pathlib import Path
+from typing import Dict, List, Optional
 
 import cognee
 from cognee import SearchType
+from cognee.api.v1.visualize.visualize import visualize_graph
+from cognee.context_global_variables import set_database_global_context_variables
+from cognee.modules.users.methods import get_default_user
+
+
+DEFAULT_DATASET_NAME = "main_dataset"
 
 
 def init_memory() -> None:
@@ -36,6 +43,35 @@ def _format_fact(fact: Dict) -> str:
         return f"{core} ({', '.join(meta)})"
 
     return core
+
+
+async def _ensure_graph_context(dataset_name: Optional[str]) -> None:
+    """
+    Ensure the graph database context matches the dataset when access control is enabled.
+    """
+    user = await get_default_user()
+    target_dataset = dataset_name or DEFAULT_DATASET_NAME
+    await set_database_global_context_variables(target_dataset, user.id)
+
+
+async def visualize_knowledge_graph(
+    output_path: Optional[str] = None,
+    dataset_name: Optional[str] = None,
+) -> Optional[Path]:
+    """
+    Render the current Cognee knowledge graph to an interactive HTML file.
+    Returns the path to the generated HTML file.
+    """
+    await _ensure_graph_context(dataset_name)
+
+    if output_path:
+        target = Path(output_path).expanduser()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        await visualize_graph(str(target))
+        return target
+
+    await visualize_graph()
+    return None
 
 
 async def store_facts(facts: List[Dict]) -> None:

@@ -4,9 +4,10 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from app.memory import init_memory, store_facts
+from app.memory import init_memory, store_facts, visualize_knowledge_graph
 from app.ingest import ingest_document
 from app.retrieve import retrieve_context
 from app.llm import llm_client
@@ -68,6 +69,26 @@ async def query(req: QueryRequest):
     response = llm_client.generate_answer(prompt)
 
     return response
+
+
+@app.get("/graph")
+async def graph(output_path: str | None = None, dataset_name: str | None = None):
+    """
+    Render the current knowledge graph to an interactive HTML file.
+    If no output_path is provided, Cognee writes to its default location.
+    """
+    graph_path = await visualize_knowledge_graph(output_path, dataset_name)
+    if not graph_path:
+        return {
+            "status": "success",
+            "message": "Graph written to Cognee's default location (home directory).",
+        }
+
+    return FileResponse(
+        path=str(graph_path),
+        media_type="text/html",
+        filename=graph_path.name,
+    )
 
 
 # ---------- Prompt builder ----------
