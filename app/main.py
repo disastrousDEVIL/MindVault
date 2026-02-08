@@ -39,7 +39,7 @@ class QueryRequest(BaseModel):
 # ---------- Routes ----------
 
 @app.post("/ingest")
-def ingest(req: IngestRequest):
+async def ingest(req: IngestRequest):
     """Ingest a document and store extracted facts."""
     try:
         facts = ingest_document(
@@ -47,16 +47,16 @@ def ingest(req: IngestRequest):
             title=req.title,
             content=req.content,
         )
-        store_facts(facts)
+        await store_facts(facts)
         return {"status": "success", "facts_stored": len(facts)}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
 @app.post("/query")
-def query(req: QueryRequest):
+async def query(req: QueryRequest):
     """Answer a question using stored facts."""
-    facts = retrieve_context(req.question)
+    facts = await retrieve_context(req.question)
 
     if not facts:
         return {
